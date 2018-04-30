@@ -1,0 +1,6 @@
+[submodule "percy"]
+	path = percy
+	url = git@github.com:whaaswijk/percy.git
+[submodule "alice"]
+	path = alice
+	url = https://github.com/msoeken/alice.git
