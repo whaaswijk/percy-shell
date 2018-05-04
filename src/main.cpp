@@ -264,121 +264,130 @@ namespace alice
         public:
             iwls2018_command(const environment::ptr& env) : 
                 command( env, "Synthesize network from specification for IWLS 2018 contest" )
-            {
-				add_option( "filename, -f", filename, "Benchmarks.txt file"); 
-            }
+        {
+            add_option( "filename, -f", filename, "Benchmarks.txt file"); 
+        }
 
-            void 
-            execute() override
-            {
-				std::ifstream file(filename);
-				
-				std::string line;
-				std::vector<std::string> sort_inputs;
-				while (std::getline(file, line))
-				{	
-					sort_inputs.push_back(line); 
-				}
-				using string_t = decltype(line); 
-				std::sort(
+        void 
+        execute() override
+        {
+            std::ifstream file(filename);
+
+            std::string line;
+            std::vector<std::string> sort_inputs;
+            while (std::getline(file, line))
+            {	
+                sort_inputs.push_back(line); 
+            }
+            using string_t = decltype(line); 
+            std::sort(
                     sort_inputs.begin(), 
                     sort_inputs.end(), 
                     [](const string_t& p1, const string_t& p2 ) { 
-                        return p1.size() < p2.size(); 
+                    return p1.size() < p2.size(); 
                     } 
-                );
-					
-				for (auto& line : sort_inputs)		
-				{
-						std::vector<std::string> inputs;
+                    );
 
-						boost::algorithm::split(
-                                inputs, line, 
-                                boost::algorithm::is_any_of(" ")
+            for (auto& line : sort_inputs)		
+            {
+                std::vector<std::string> inputs;
+
+                boost::algorithm::split(
+                        inputs, line, 
+                        boost::algorithm::is_any_of(" ")
                         );
-			
-						if ((inputs[0] == "#") || (inputs.size() < 3)) {
-                            continue;
-                        }
-						
-						assert (inputs.size() == 3); 
-						auto truth_table = inputs[0]; 
-						std::string outfile_name; 
-						
-						outfile_name += truth_table;
-						
-						auto const fanin_size = std::stoi (inputs[1]); 
-						outfile_name+=fmt::format( "-{}",inputs[1]); 
-						auto const gates_size = std::stoi (inputs[2]); 
-						outfile_name+=fmt::format( "-{}.bln",inputs[2]);  
-						auto num_vars = log2(truth_table.size() << 2); 
-						
-						std::ofstream outfile (outfile_name); 
 
-						kitty::dynamic_truth_table tt(num_vars);
-						kitty::create_from_hex_string(tt, truth_table);
-    
-						synth_spec<dynamic_truth_table> spec2(num_vars, 1);
-						spec2.verbosity = 0;
-						spec2.functions[0] = &tt;
-    
-						auto synth2 = new_std_synth<2>();
-						chain<2> c2;
-						auto synth3 = new_std_synth<3>();
-						chain<3> c3;
-						auto synth4 = new_std_synth<4>();
-						chain<4> c4;
-	
-						switch (fanin_size) {
-						case 2 : 
-                            synth2->reset();
-                            while (synth2->next_solution(spec2, c2, gates_size)
-                                    == success) {
-                                if (c2.get_nr_vertices() > gates_size)
-                                        break; 
-                                assert(c2.get_nr_vertices() <= gates_size);
-            
-                                    //printf("Next solution: ");
-                                    to_iwls(c2, outfile);
-                                    outfile << std::endl; 
-            
-                                    assert(c2.satisfies_spec(spec2));
-                            }
-                            break; 
-						case 3 : 
-                            synth3->reset();
-                            while (synth3->next_solution(spec2, c3, gates_size)
-                                    == success) {
-                                  if (c3.get_nr_vertices() > gates_size)
-                                        break; 
-                                    assert(c3.get_nr_vertices() <= gates_size);
-            
-                                    to_iwls(c3, outfile);
-                                    outfile << std::endl; 
-            
-                                    assert(c3.satisfies_spec(spec2));
-                            }
-                            break;
-						case 4 : 
-                            synth4->reset();
-                            while (synth4->next_solution(spec2, c4, gates_size)
-                                    == success) {
-                                 if (c4.get_nr_vertices() > gates_size)
-                                    break; 
-                                    assert(c4.get_nr_vertices() <= gates_size);
-            
-                                    to_iwls(c4, outfile);
-                                    outfile << std::endl; 
-            
-                                    assert(c4.satisfies_spec(spec2));
-                            }
-						break;
-					 }
-			    }
-       
-       }
+                if ((inputs[0] == "#") || (inputs.size() < 3)) {
+                    continue;
+                }
+
+                assert (inputs.size() == 3); 
+                auto truth_table = inputs[0]; 
+                std::string outfile_name; 
+
+                outfile_name += truth_table;
+
+                auto const fanin_size = std::stoi (inputs[1]); 
+                outfile_name+=fmt::format( "-{}",inputs[1]); 
+                auto const gates_size = std::stoi (inputs[2]); 
+                outfile_name+=fmt::format( "-{}.bln",inputs[2]);  
+                auto num_vars = log2(truth_table.size() << 2); 
+
+                std::ofstream outfile (outfile_name); 
+
+                kitty::dynamic_truth_table tt(num_vars);
+                kitty::create_from_hex_string(tt, truth_table);
+
+                synth_spec<dynamic_truth_table> spec2(num_vars, 1);
+                spec2.verbosity = 0;
+                spec2.functions[0] = &tt;
+
+                auto synth2 = new_std_synth<
+                    2, 
+                    percy::knuth_encoder<2, CMSat::SATSolver*>, 
+                    CMSat::SATSolver*>();
+                chain<2> c2;
+                auto synth3 = new_std_synth<
+                    3,
+                    percy::knuth_encoder<3, CMSat::SATSolver*>, 
+                    CMSat::SATSolver*>();
+                chain<3> c3;
+                auto synth4 = new_std_synth<
+                    4,
+                    percy::knuth_encoder<4, CMSat::SATSolver*>, 
+                    CMSat::SATSolver*>();
+                chain<4> c4;
+
+                switch (fanin_size) {
+                    case 2 : 
+                        synth2->reset();
+                        while (synth2->next_solution(spec2, c2, gates_size)
+                                == success) {
+                            if (c2.get_nr_vertices() > gates_size)
+                                break; 
+                            assert(c2.get_nr_vertices() <= gates_size);
+
+                            //printf("Next solution: ");
+                            to_iwls(c2, outfile);
+                            outfile << std::endl; 
+
+                            assert(c2.satisfies_spec(spec2));
+                        }
+                        break; 
+                    case 3 : 
+                        synth3->reset();
+                        while (synth3->next_solution(spec2, c3, gates_size)
+                                == success) {
+                            if (c3.get_nr_vertices() > gates_size)
+                                break; 
+                            assert(c3.get_nr_vertices() <= gates_size);
+
+                            to_iwls(c3, outfile);
+                            outfile << std::endl; 
+
+                            assert(c3.satisfies_spec(spec2));
+                        }
+                        break;
+                    case 4 : 
+                        synth4->reset();
+                        while (synth4->next_solution(spec2, c4, gates_size)
+                                == success) {
+                            if (c4.get_nr_vertices() > gates_size)
+                                break; 
+                            assert(c4.get_nr_vertices() <= gates_size);
+
+                            to_iwls(c4, outfile);
+                            outfile << std::endl; 
+
+                            assert(c4.satisfies_spec(spec2));
+                        }
+                        break;
+                }
+            }
+
+        }
         private:
-			std::string filename;
+            std::string filename;
     };
     
     ALICE_ADD_COMMAND(iwls2018, "IWLS 2018 contest ");
