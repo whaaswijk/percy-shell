@@ -29,10 +29,12 @@ namespace percy
                         s << char(('A' + step[0]));
                     else 
                         s << char(('a' + step[0]));
+					s << " ";
                     if (step[1] >= nr_inputs)
                         s << char(('A' + step[1]));
                     else 
                         s << char(('a' + step[1]));
+					s << " ";
                     if (step[2] >= nr_inputs)
                         s << char(('A' + step[2]));
                     else 
@@ -43,14 +45,17 @@ namespace percy
                         s << char(('A' + step[0]));
                     else 
                         s << char(('a' + step[0]));
+					s << " ";
                     if (step[1] >= nr_inputs)
                         s << char(('A' + step[1]));
                     else 
                         s << char(('a' + step[1]));
+					s << " ";
                     if (step[2] >= nr_inputs)
                         s << char(('A' + step[2]));
                     else 
-                        s << char(('a' + step[2]));
+                        s << char(('a ' + step[2]));
+					s << " ";
                     if (step[3] >= nr_inputs)
                         s << char(('A' + step[3]));
                     else 
@@ -83,7 +88,7 @@ namespace percy
             } else {
                 s << char(('a' + step.first));
             }
-
+			s << " ";
             if (step.second >= nr_inputs) {
                 s << char(('A' + step.second));
             } else  {
