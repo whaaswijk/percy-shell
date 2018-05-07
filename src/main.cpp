@@ -347,11 +347,10 @@ namespace alice
                                 break; 
                             assert(c2.get_nr_vertices() <= gates_size);
 
-                            //printf("Next solution: ");
-                            to_iwls(c2, outfile);
-                            outfile << std::endl; 
-
-                            assert(c2.satisfies_spec(spec2));
+                            if (c2.satisfies_spec(spec2)) {
+                                to_iwls(c2, outfile);
+                                outfile << std::endl; 
+                            }
                         }
                         break; 
                     case 3 : 
@@ -362,10 +361,10 @@ namespace alice
                                 break; 
                             assert(c3.get_nr_vertices() <= gates_size);
 
-                            to_iwls(c3, outfile);
-                            outfile << std::endl; 
-
-                            assert(c3.satisfies_spec(spec2));
+                            if (c3.satisfies_spec(spec2)) {
+                                to_iwls(c3, outfile);
+                                outfile << std::endl; 
+                            }
                         }
                         break;
                     case 4 : 
@@ -376,10 +375,10 @@ namespace alice
                                 break; 
                             assert(c4.get_nr_vertices() <= gates_size);
 
-                            to_iwls(c4, outfile);
-                            outfile << std::endl; 
-
-                            assert(c4.satisfies_spec(spec2));
+                            if (c4.satisfies_spec(spec2)) {
+                                to_iwls(c4, outfile);
+                                outfile << std::endl; 
+                            }
                         }
                         break;
                 }
@@ -444,13 +443,11 @@ namespace alice
                             == success) {
                         if (c2.get_nr_vertices() > gates_size)
                             break; 
-                        assert(c2.get_nr_vertices() <= gates_size);
 
-                        //printf("Next solution: ");
-                        to_iwls(c2, outfile);
-                        outfile << std::endl; 
-
-                        assert(c2.satisfies_spec(spec2));
+                        if (c2.satisfies_spec(spec2)) {
+                            to_iwls(c2, outfile);
+                            outfile << std::endl; 
+                        }
                     }
                     break; 
                 case 3 : 
@@ -459,12 +456,11 @@ namespace alice
                             == success) {
                         if (c3.get_nr_vertices() > gates_size)
                             break; 
-                        assert(c3.get_nr_vertices() <= gates_size);
 
-                        to_iwls(c3, outfile);
-                        outfile << std::endl; 
-
-                        assert(c3.satisfies_spec(spec2));
+                        if (c3.satisfies_spec(spec2)) {
+                            to_iwls(c3, outfile);
+                            outfile << std::endl; 
+                        }
                     }
                     break;
                 case 4 : 
@@ -473,12 +469,12 @@ namespace alice
                             == success) {
                         if (c4.get_nr_vertices() > gates_size)
                             break; 
-                        assert(c4.get_nr_vertices() <= gates_size);
 
-                        to_iwls(c4, outfile);
-                        outfile << std::endl; 
+                        if (c4.satisfies_spec(spec2)) {
+                            to_iwls(c4, outfile);
+                            outfile << std::endl; 
+                        }
 
-                        assert(c4.satisfies_spec(spec2));
                     }
                     break;
             }
