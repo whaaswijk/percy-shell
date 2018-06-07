@@ -1,3 +1,6 @@
 [submodule "alice"]
 	path = alice
 	url = https://github.com/msoeken/alice.git
+[submodule "percy"]
+	path = percy
+	url = https://github.com/whaaswijk/percy

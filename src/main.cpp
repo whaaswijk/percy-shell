@@ -2,15 +2,21 @@
 #include <alice/alice.hpp>
 #include <math.h> 
 #include <algorithm> 
+#include <vector>
 
 #include <fmt/format.h>
 
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
-
 #include "io.hpp"
 
-vector<kitty::dynamic_truth_table> functions;
+std::vector<kitty::dynamic_truth_table> functions;
+
+std::vector<std::string> 
+split(const std::string& input, const std::string& regex) {
+    // passing -1 as the submatch index parameter performs splitting
+    std::regex re(regex);
+    std::sregex_token_iterator first{ input.begin(), input.end(), re, -1 }, last;
+    return { first, last };
+}
 
 namespace percy
 {
@@ -292,11 +298,7 @@ namespace alice
             {
                 std::vector<std::string> inputs;
 
-                boost::algorithm::split(
-                        inputs, line, 
-                        boost::algorithm::is_any_of(" ")
-                        );
-
+                const auto inputs = split(line, "\s");
                 if ((inputs[0] == "#") || (inputs.size() < 3)) {
                     continue;
                 }
