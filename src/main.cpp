@@ -296,8 +296,6 @@ namespace alice
 
             for (auto& line : sort_inputs)		
             {
-                std::vector<std::string> inputs;
-
                 const auto inputs = split(line, "\s");
                 if ((inputs[0] == "#") || (inputs.size() < 3)) {
                     continue;
@@ -325,19 +323,16 @@ namespace alice
                 spec2.functions[0] = &tt;
 
                 auto synth2 = new_std_synth<
-                    2, 
-                    percy::knuth_encoder<2, CMSat::SATSolver*>, 
-                    CMSat::SATSolver*>();
+                    2, CMSat::SATSolver*,
+                    percy::knuth_encoder<2, CMSat::SATSolver*>>();
                 chain<2> c2;
                 auto synth3 = new_std_synth<
-                    3,
-                    percy::knuth_encoder<3, CMSat::SATSolver*>, 
-                    CMSat::SATSolver*>();
+                    3, CMSat::SATSolver*,
+                    percy::knuth_encoder<3, CMSat::SATSolver*>>();
                 chain<3> c3;
                 auto synth4 = new_std_synth<
-                    4,
-                    percy::knuth_encoder<4, CMSat::SATSolver*>, 
-                    CMSat::SATSolver*>();
+                    4, CMSat::SATSolver*,
+                    percy::knuth_encoder<4, CMSat::SATSolver*>>();
                 chain<4> c4;
 
                 switch (fanin_size) {
@@ -423,19 +418,16 @@ namespace alice
             spec2.functions[0] = &tt;
 
             auto synth2 = new_std_synth<
-                2, 
-                percy::knuth_encoder<2, CMSat::SATSolver*>, 
-                CMSat::SATSolver*>();
+                2, CMSat::SATSolver*,
+                percy::knuth_encoder<2, CMSat::SATSolver*>>();
             chain<2> c2;
             auto synth3 = new_std_synth<
-                3,
-                percy::knuth_encoder<3, CMSat::SATSolver*>, 
-                CMSat::SATSolver*>();
+                3, CMSat::SATSolver*,
+                percy::knuth_encoder<3, CMSat::SATSolver*>>();
             chain<3> c3;
             auto synth4 = new_std_synth<
-                4,
-                percy::knuth_encoder<4, CMSat::SATSolver*>, 
-                CMSat::SATSolver*>();
+                4, CMSat::SATSolver*,
+                percy::knuth_encoder<4, CMSat::SATSolver*>>();
             chain<4> c4;
 
             switch (fanin_size) {
