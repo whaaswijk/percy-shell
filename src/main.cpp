@@ -18,91 +18,33 @@ split(const std::string& input, const std::string& regex) {
     return { first, last };
 }
 
-namespace percy
-{
-	
-    /***************************************************************************
-        A generic logic network class used to store the results of exact
-        synthesis.
-    ***************************************************************************/
-    class unbound_logic_network
-    {
-    private:
-        int nr_in;
-        std::vector<std::vector<int>> nodes;
-        std::vector<kitty::dynamic_truth_table> operators;
-        std::vector<int> outputs;
-    
-    public:
-        unbound_logic_network() {}
-
-        template<int FI>
-        void
-        copy_chain(const chain<FI>& c)
-        {
-            nr_in = c.get_nr_inputs();
-
-            nodes.clear();
-            operators.clear();
-            
-            c.foreach_vertex([this, &c] (auto v, int i) {
-                std::vector<int> fanin;
-                c.foreach_fanin(v, [&fanin] (auto fid, int j) {
-                    fanin.push_back(fid);
-                });
-                this->nodes.push_back(fanin);
-                
-                const auto& static_op = c.get_operator(i);
-                dynamic_truth_table op(fanin.size());
-
-                for (int k = 0; k < static_op.num_bits(); k++) {
-                    if (get_bit(static_op, k))
-                        set_bit(op, k);
-                }
-
-                this->operators.push_back(op);
-            });
-        }
-
-        int get_nr_in() const { return nr_in; }
-        int get_nr_out() const { return outputs.size(); }
-        int get_nr_nodes() const { return nodes.size(); }
-        const auto& get_nodes() const { return nodes; }
-        const auto& get_node(int i) const { return nodes[i]; }
-        const auto& get_operator(int i) const { return operators[i]; }
-    };
-}
+using namespace percy;
 
 namespace alice
 {
-    using percy::synth_spec;
-    using percy::chain;
-	using percy::success;
-	using percy::new_std_synth;
     using kitty::dynamic_truth_table;
-    using percy::unbound_logic_network;
 
-    ALICE_ADD_STORE(percy::synth_spec<kitty::dynamic_truth_table>, 
+    ALICE_ADD_STORE(spec, 
             "spec", "s", "specification", "specification");
     
-    ALICE_ADD_STORE(percy::unbound_logic_network, 
+    ALICE_ADD_STORE(chain,
             "ntk", "n", "network", "networks");
 
-    ALICE_DESCRIBE_STORE(unbound_logic_network, ntk)
+    ALICE_DESCRIBE_STORE(chain, ntk)
     {
         return fmt::format("({}, {}, {})", 
-                            ntk.get_nr_in(), 
-                            ntk.get_nr_nodes(), 
-                            ntk.get_nr_out());
+                            ntk.get_nr_inputs(), 
+                            ntk.get_nr_steps(), 
+                            ntk.get_nr_outputs());
     }
 
-    ALICE_PRINT_STORE(unbound_logic_network, os, ntk)
+    ALICE_PRINT_STORE(chain, os, ntk)
     {
-        const auto nr_in = ntk.get_nr_in();
+        const auto nr_in = ntk.get_nr_inputs();
         char node_name = 'A' + nr_in;
-        for (int i = 0; i < ntk.get_nr_nodes(); i++) {
+        for (int i = 0; i < ntk.get_nr_steps(); i++) {
             os << node_name << " = " << kitty::to_binary(ntk.get_operator(i));
-            auto fanins = ntk.get_node(i);
+            auto fanins = ntk.get_step(i);
             for (auto fanin : fanins) {
                 char fanin_name = '\0';
                 if (fanin < nr_in) {
@@ -153,35 +95,34 @@ namespace alice
                     function = f;
                 }
                 functions.push_back(function);
-                const auto fptr = &functions[functions.size() - 1];
 
-                synth_spec<dynamic_truth_table> spec(num_vars, 1);
-                spec.functions[0] = fptr;
+                spec new_spec;
+                new_spec[0] = function;
 
-                this->store<synth_spec<dynamic_truth_table>>().extend() = spec;
+                this->store<spec>().extend() = new_spec;
             }
 
         private:
             std::string truth_table;
     };
 
-    ALICE_DESCRIBE_STORE(percy::synth_spec<kitty::dynamic_truth_table>, spec)
+    ALICE_DESCRIBE_STORE(spec, spec)
     {
         return fmt::format("({}, {}, {})", 
                             spec.get_nr_in(), 
                             spec.get_nr_out(), 
-                            kitty::to_hex(*spec.functions[0]));
+                            kitty::to_hex(spec[0]));
     }
 
-    ALICE_PRINT_STORE(percy::synth_spec<kitty::dynamic_truth_table>, os, spec)
+    ALICE_PRINT_STORE(spec, os, spec)
     {
         os << "SPECIFICATION\n";
         os << "Nr. inputs = " << spec.get_nr_in() << "\n";
         os << "Nr. outputs = " << spec.get_nr_out() << "\n";
         for (int i = 0; i < spec.get_nr_out(); i++) {
             os << "f_" << i + 1 << " = ";
-            os << kitty::to_hex(*spec.functions[i]) << " (hex) -- ";
-            os << kitty::to_binary(*spec.functions[i]) << " (bin)\n";
+            os << kitty::to_hex(spec[i]) << " (hex) -- ";
+            os << kitty::to_binary(spec[i]) << " (bin)\n";
         }
     }
 
@@ -202,7 +143,7 @@ namespace alice
             void 
             execute() override
             {
-                if (this->store<synth_spec<dynamic_truth_table>>().size()==0) {
+                if (this->store<spec>().size()==0) {
                     this->env->err() << "Error: specification not found\n";
                     return;
                 }
@@ -211,49 +152,20 @@ namespace alice
                         << " is not supported\n";
                     return;
                 }
-                auto spec = 
-                    this->store<synth_spec<dynamic_truth_table>>().current();
+                auto synth_spec = this->store<spec>().current();
+                chain c;
 
-
-                percy::synth_result result;
-                if (fanin_size == 2) {
-                    chain<2> c;
-                    auto synth = percy::new_std_synth<2>();
-                    result = synth->synthesize<dynamic_truth_table>(spec, c);
-                    unbound_logic_network ntk;
-                    ntk.copy_chain(c);
-                    this->store<unbound_logic_network>().extend() = ntk;
-                } else if (fanin_size == 3) {
-                    chain<3> c;
-                    auto synth = percy::new_std_synth<3>();
-                    result = synth->synthesize<dynamic_truth_table>(spec, c);
-                    unbound_logic_network ntk;
-                    ntk.copy_chain(c);
-                    this->store<unbound_logic_network>().extend() = ntk;
-                } else if (fanin_size == 4) {
-                    chain<4> c;
-                    auto synth = percy::new_std_synth<4>();
-                    result = synth->synthesize<dynamic_truth_table>(spec, c);
-                    unbound_logic_network ntk;
-                    ntk.copy_chain(c);
-                    this->store<unbound_logic_network>().extend() = ntk;
-                } else {
-                    chain<5> c;
-                    auto synth = percy::new_std_synth<5>();
-                    result = synth->synthesize<dynamic_truth_table>(spec, c);
-                    unbound_logic_network ntk;
-                    ntk.copy_chain(c);
-                    this->store<unbound_logic_network>().extend() = ntk;
-                }
+                auto result = synthesize(synth_spec, c);
+                this->store<chain>().extend() = c;
 
                 switch (result) {
-                    case percy::synth_result::success:
+                    case synth_result::success:
                         this->env->out() << "SUCCESS\n";
                         break;
-                    case percy::synth_result::failure:
+                    case synth_result::failure:
                         this->env->out() << "FAILURE\n";
                         break;
-                    case percy::synth_result::timeout:
+                    case synth_result::timeout:
                         this->env->out() << "TIMEOUT\n";
                         break;
                 }
@@ -278,6 +190,12 @@ namespace alice
         execute() override
         {
             std::ifstream file(filename);
+
+            spec synth_spec;
+            chain c;
+
+            bsat_wrapper solver;
+            knuth_encoder encoder(solver);
 
             std::string line;
             std::vector<std::string> sort_inputs;
@@ -318,69 +236,20 @@ namespace alice
                 kitty::dynamic_truth_table tt(num_vars);
                 kitty::create_from_hex_string(tt, truth_table);
 
-                synth_spec<dynamic_truth_table> spec2(num_vars, 1);
-                spec2.verbosity = 0;
-                spec2.functions[0] = &tt;
+                synth_spec[0] = tt;
+                synth_spec.initial_steps = gates_size;
+                synth_spec.fanin = fanin_size;
+                synth_spec.add_colex_clauses = false;
+                synth_spec.add_lex_clauses = true;
 
-                auto synth2 = new_std_synth<
-                    2, CMSat::SATSolver*,
-                    percy::knuth_encoder<2, CMSat::SATSolver*>>();
-                chain<2> c2;
-                auto synth3 = new_std_synth<
-                    3, CMSat::SATSolver*,
-                    percy::knuth_encoder<3, CMSat::SATSolver*>>();
-                chain<3> c3;
-                auto synth4 = new_std_synth<
-                    4, CMSat::SATSolver*,
-                    percy::knuth_encoder<4, CMSat::SATSolver*>>();
-                chain<4> c4;
-
-                switch (fanin_size) {
-                    case 2 : 
-                        synth2->reset();
-                        while (synth2->next_solution(spec2, c2, gates_size)
-                                == success) {
-                            if (c2.get_nr_vertices() > gates_size)
-                                break; 
-                            assert(c2.get_nr_vertices() <= gates_size);
-
-                            if (c2.satisfies_spec(spec2)) {
-                                to_iwls(c2, outfile);
-                                outfile << std::endl; 
-                            }
-                        }
-                        break; 
-                    case 3 : 
-                        synth3->reset();
-                        while (synth3->next_solution(spec2, c3, gates_size)
-                                == success) {
-                            if (c3.get_nr_vertices() > gates_size)
-                                break; 
-                            assert(c3.get_nr_vertices() <= gates_size);
-
-                            if (c3.satisfies_spec(spec2)) {
-                                to_iwls(c3, outfile);
-                                outfile << std::endl; 
-                            }
-                        }
-                        break;
-                    case 4 : 
-                        synth4->reset();
-                        while (synth4->next_solution(spec2, c4, gates_size)
-                                == success) {
-                            if (c4.get_nr_vertices() > gates_size)
-                                break; 
-                            assert(c4.get_nr_vertices() <= gates_size);
-
-                            if (c4.satisfies_spec(spec2)) {
-                                to_iwls(c4, outfile);
-                                outfile << std::endl; 
-                            }
-                        }
-                        break;
+                encoder.reset();
+                while (next_solution(synth_spec, c, solver, encoder, SYNTH_STD_CEGAR) == success) {
+                    if (c.satisfies_spec(synth_spec)) {
+                        to_iwls(c, outfile);
+                        outfile << std::endl;
+                    }
                 }
             }
-
         }
         private:
             std::string filename;
@@ -400,6 +269,10 @@ namespace alice
         void 
         execute() override
         {
+            if (truth_table.size() == 0 || fanin_str.size() == 0 || gates_str.size() == 0) {
+                fprintf(stderr, "Usage: iwls2018 -t [truth table] -f [fanin size] -g [nr. of gates]\n");
+                return;
+            }
             std::string outfile_name(truth_table);
 
             auto const fanin_size = std::stoi(fanin_str); 
@@ -413,66 +286,25 @@ namespace alice
             kitty::dynamic_truth_table tt(num_vars);
             kitty::create_from_hex_string(tt, truth_table);
 
-            synth_spec<dynamic_truth_table> spec2(num_vars, 1);
-            spec2.verbosity = 0;
-            spec2.functions[0] = &tt;
+            spec synth_spec;
+            synth_spec.verbosity = 0;
+            synth_spec[0] = tt;
+            synth_spec.add_colex_clauses = false;
+            synth_spec.add_lex_clauses = true;
+            synth_spec.fanin = fanin_size;
+            synth_spec.initial_steps = gates_size;
 
-            auto synth2 = new_std_synth<
-                2, CMSat::SATSolver*,
-                percy::knuth_encoder<2, CMSat::SATSolver*>>();
-            chain<2> c2;
-            auto synth3 = new_std_synth<
-                3, CMSat::SATSolver*,
-                percy::knuth_encoder<3, CMSat::SATSolver*>>();
-            chain<3> c3;
-            auto synth4 = new_std_synth<
-                4, CMSat::SATSolver*,
-                percy::knuth_encoder<4, CMSat::SATSolver*>>();
-            chain<4> c4;
+            chain c;
 
-            switch (fanin_size) {
-                case 2 : 
-                    synth2->reset();
-                    while (synth2->next_solution(spec2, c2, gates_size)
-                            == success) {
-                        if (c2.get_nr_vertices() > gates_size)
-                            break; 
+            bsat_wrapper solver;
+            knuth_encoder encoder(solver);
 
-                        if (c2.satisfies_spec(spec2)) {
-                            to_iwls(c2, outfile);
-                            outfile << std::endl; 
-                        }
-                    }
-                    break; 
-                case 3 : 
-                    synth3->reset();
-                    while (synth3->next_solution(spec2, c3, gates_size)
-                            == success) {
-                        if (c3.get_nr_vertices() > gates_size)
-                            break; 
-
-                        if (c3.satisfies_spec(spec2)) {
-                            to_iwls(c3, outfile);
-                            outfile << std::endl; 
-                        }
-                    }
-                    break;
-                case 4 : 
-                    synth4->reset();
-                    while (synth4->next_solution(spec2, c4, gates_size)
-                            == success) {
-                        if (c4.get_nr_vertices() > gates_size)
-                            break; 
-
-                        if (c4.satisfies_spec(spec2)) {
-                            to_iwls(c4, outfile);
-                            outfile << std::endl; 
-                        }
-
-                    }
-                    break;
+            while (next_solution(synth_spec, c, solver, encoder, SYNTH_STD_CEGAR) == success) {
+                if (c.satisfies_spec(synth_spec)) {
+                    to_iwls(c, outfile);
+                    outfile << std::endl;
+                }
             }
-
         }
 
         private:
