@@ -286,6 +286,8 @@ namespace alice
             kitty::dynamic_truth_table tt(num_vars);
             kitty::create_from_hex_string(tt, truth_table);
 
+            int nr_solutions = 0;
+
             spec synth_spec;
             synth_spec.verbosity = 0;
             synth_spec[0] = tt;
@@ -295,16 +297,17 @@ namespace alice
             synth_spec.initial_steps = gates_size;
 
             chain c;
-
-            bsat_wrapper solver;
+            cmsat_wrapper solver;
             knuth_encoder encoder(solver);
 
             while (next_solution(synth_spec, c, solver, encoder, SYNTH_STD_CEGAR) == success) {
+                printf("%d\r", nr_solutions++);
                 if (c.satisfies_spec(synth_spec)) {
                     to_iwls(c, outfile);
                     outfile << std::endl;
                 }
             }
+            printf("\n");
         }
 
         private:
