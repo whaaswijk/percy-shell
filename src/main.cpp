@@ -288,26 +288,24 @@ namespace alice
 
             int nr_solutions = 0;
 
-            spec synth_spec;
-            synth_spec.verbosity = 0;
+            spec synth_spec; // Create specification
             synth_spec[0] = tt;
             synth_spec.add_colex_clauses = false;
             synth_spec.add_lex_clauses = true;
             synth_spec.fanin = fanin_size;
             synth_spec.initial_steps = gates_size;
 
-            chain c;
-            cmsat_wrapper solver;
-            knuth_encoder encoder(solver);
+            chain c; // Holds the synthesized network
+            cmsat_wrapper solver; // Use the CryptoMinisat solver
+            knuth_encoder encoder(solver); // Use Knuth's CNF encoding
 
-            while (next_solution(synth_spec, c, solver, encoder, SYNTH_STD_CEGAR) == success) {
-                printf("%d\r", nr_solutions++);
-                if (c.satisfies_spec(synth_spec)) {
+            while (next_solution(synth_spec, c, solver, encoder) == success) {
+                printf("%d\n", nr_solutions++); // Give feedback
+                if (c.satisfies_spec(synth_spec)) { // Only write correct solutions
                     to_iwls(c, outfile);
                     outfile << std::endl;
                 }
             }
-            printf("\n");
         }
 
         private:
