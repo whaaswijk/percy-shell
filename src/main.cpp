@@ -3,6 +3,7 @@
 #include <math.h> 
 #include <algorithm> 
 #include <vector>
+#include <string>
 
 #include <fmt/format.h>
 
@@ -257,9 +258,9 @@ namespace alice
 
     class iwls2018_command : public command
     {
-        public:
-            iwls2018_command(const environment::ptr& env) : 
-                command( env, "Synthesize network from specification for IWLS 2018 contest" )
+    public:
+        iwls2018_command(const environment::ptr& env) :
+            command(env, "Synthesize network from specification for IWLS 2018 contest")
         {
             add_option( "truth-table, -t", truth_table, "Function truth table"); 
             add_option( "fanin, -f", fanin_str, "Number of operator fanins"); 
@@ -320,6 +321,65 @@ namespace alice
 	
     ALICE_ADD_COMMAND(synthesize, "Synthesis");
 
+    class cnf_gen_command : public command
+    {
+    public:
+        cnf_gen_command(const environment::ptr& env) :
+            command(env, "Synthesize network from specification for IWLS 2018 contest")
+        {
+            add_option("truth-table, -t", truth_table, "Function truth table");
+            add_option("fanin, -f", fanin_str, "Number of operator fanins");
+            add_option("gates, -g", gates_str, "Number of gates");
+        }
+
+        void
+        execute() override
+        {
+            spec spec;
+
+            if (truth_table.size() == 0) {
+                fprintf(stderr, "Error: truth table not specified\n");
+                return;
+            }
+            if (gates_str.size() == 0) {
+                fprintf(stderr, "Error: number of gates not specified\n");
+                return;
+            }
+            auto nr_gates = std::stoi(gates_str);
+            if (truth_table.substr(0, 3) == "maj") {
+                // Encode synthesis for a majority graph
+                const auto nr_inputs = std::stoi(truth_table.substr(3, 1));
+                kitty::dynamic_truth_table maj_tt(nr_inputs);
+                kitty::create_majority(maj_tt);
+                spec.fanin = 3;
+                spec.nr_steps = nr_gates;
+                spec[0] = maj_tt;
+                spec.add_primitive(MAJ);
+                spec.compile_primitives();
+                spec.preprocess();
+                cnf_formula formula;
+                knuth_encoder encoder(formula);
+                encoder.encode(spec);
+
+                const auto dimacs_filename = "maj-" + std::to_string(nr_inputs) + 
+                    "-" + std::to_string(nr_gates) + ".cnf";
+                auto fhandle = fopen(dimacs_filename.c_str(), "w");
+                if (fhandle == NULL) {
+                    fprintf(stderr, "Error: unable to open output file\n");
+                    return;
+                }
+                formula.to_dimacs(fhandle);
+                fclose(fhandle);
+            }
+        }
+
+    private:
+            std::string truth_table;
+            std::string fanin_str;
+            std::string gates_str;
+    };
+    
+    ALICE_ADD_COMMAND(cnf_gen, "Generate DIMACS file from specification");
 }
 
 ALICE_MAIN(percy)
