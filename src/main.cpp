@@ -4,6 +4,7 @@
 #include <algorithm> 
 #include <vector>
 #include <string>
+#include <map>
 
 #include <fmt/format.h>
 
@@ -378,8 +379,99 @@ namespace alice
             std::string fanin_str;
             std::string gates_str;
     };
-    
+
     ALICE_ADD_COMMAND(cnf_gen, "Generate DIMACS file from specification");
+    
+    ALICE_ADD_STORE(std::vector<partial_dag>,
+            "pds", "p", "partial_dags", "partial_dags");
+
+    ALICE_DESCRIBE_STORE(std::vector<partial_dag>, dags)
+    {
+        return fmt::format("[{}]", dags.size());
+    }
+
+    /// A command to generate partial DAGs of the specified size.
+    /// Generated PDs are loaded into the appropriate store after generation.
+    class pd_gen_command : public command
+    {
+    public:
+        pd_gen_command(const environment::ptr& env) :
+            command(env, "Generate partial DAGs")
+        {
+            add_option("gates, -g", gates_str, "Generate PDs with this number of gates");
+            add_option("max-gates, -m", max_gates_str, "Generate PDs with up to this number of gates");
+        }
+
+        void execute() override
+        {
+            const auto min_nr_gates = 1;
+            auto nr_gates = std::atoi(gates_str.c_str());
+            auto max_nr_gates = std::atoi(max_gates_str.c_str());
+            if (max_nr_gates > 0) {
+                for (int i = min_nr_gates; i <= max_nr_gates; i++) {
+                    printf("generating PDs of size %d\n", i);
+                    std::vector<partial_dag> dags;
+                    {
+                        auto non_filtered_dags = pd_generate(i);
+                        printf("generated %lu nonfilterd DAGs\n", non_filtered_dags.size());
+                        printf("filtering out isomorphic DAGs...\n");
+                        pd_filter_isomorphic(non_filtered_dags, dags, true);
+                    }
+                    printf("generated %lu DAGs\n", dags.size());
+                    this->store<std::vector<partial_dag>>().extend() = dags;
+                }
+            } else if (nr_gates > 0) {
+                printf("generating PDs of size %d...\n", nr_gates);
+                std::vector<partial_dag> dags;
+                {
+                    auto non_filtered_dags = pd_generate(nr_gates);
+                    printf("generated %lu nonfilterd DAGs\n", non_filtered_dags.size());
+                    printf("filtering out isomorphic DAGs...\n");
+                    pd_filter_isomorphic(non_filtered_dags, dags, true);
+                }
+                printf("generated %lu DAGs\n", dags.size());
+                this->store<std::vector<partial_dag>>().extend() = dags;
+            } else {
+                fprintf(stderr, "Error: incorrect number of gates\n");
+            }
+        }
+
+    private:
+        std::string gates_str;
+        std::string max_gates_str;
+
+    };
+    
+    ALICE_ADD_COMMAND(pd_gen, "Generate partial DAGs");
+
+    /// Dumps all partial DAGs in the store to a file.
+    /// Dumped PDs are memoves them from the store afterwards.
+    class pd_dump_command : public command
+    {
+    public:
+        pd_dump_command(const environment::ptr& env) :
+            command(env, "Dump partial DAGs to a file")
+        {
+        }
+
+        void execute() override
+        {
+            if (this->store<std::vector<partial_dag>>().size() == 0) {
+                fprintf(stderr, "Error: PD store is empty\n");
+                return;
+            }
+            for (int i = 0; i < this->store<std::vector<partial_dag>>().size(); i++) {
+                const auto dags = this->store<std::vector<partial_dag>>()[i];
+                if (dags.size() > 0) {
+                    const auto filename = "pd" + std::to_string(dags[0].nr_vertices()) + ".bin";
+                    write_partial_dags(dags, filename.c_str());
+                }
+            }
+            this->store<std::vector<partial_dag>>().clear();
+        }
+    };
+    
+    ALICE_ADD_COMMAND(pd_dump, "Dump partial DAGs to file");
 }
 
 ALICE_MAIN(percy)
