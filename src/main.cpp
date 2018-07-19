@@ -415,7 +415,7 @@ namespace alice
                         auto non_filtered_dags = pd_generate(i);
                         printf("generated %lu nonfilterd DAGs\n", non_filtered_dags.size());
                         printf("filtering out isomorphic DAGs...\n");
-                        pd_filter_isomorphic_fast(non_filtered_dags, dags, true);
+                        pd_filter_isomorphic_sfast(non_filtered_dags, dags, true);
                     }
                     printf("generated %lu DAGs\n", dags.size());
                     this->store<std::vector<partial_dag>>().extend() = dags;
@@ -427,7 +427,7 @@ namespace alice
                     auto non_filtered_dags = pd_generate(nr_gates);
                     printf("generated %lu nonfilterd DAGs\n", non_filtered_dags.size());
                     printf("filtering out isomorphic DAGs...\n");
-                    pd_filter_isomorphic_fast(non_filtered_dags, dags, true);
+                    pd_filter_isomorphic_sfast(non_filtered_dags, dags, true);
                 }
                 printf("generated %lu DAGs\n", dags.size());
                 this->store<std::vector<partial_dag>>().extend() = dags;
@@ -460,7 +460,7 @@ namespace alice
                 fprintf(stderr, "Error: PD store is empty\n");
                 return;
             }
-            for (int i = 0; i < this->store<std::vector<partial_dag>>().size(); i++) {
+            for (auto i = 0u; i < this->store<std::vector<partial_dag>>().size(); i++) {
                 const auto dags = this->store<std::vector<partial_dag>>()[i];
                 if (dags.size() > 0) {
                     const auto filename = "pd" + std::to_string(dags[0].nr_vertices()) + ".bin";
