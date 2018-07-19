@@ -410,25 +410,13 @@ namespace alice
             if (max_nr_gates > 0) {
                 for (int i = min_nr_gates; i <= max_nr_gates; i++) {
                     printf("generating PDs of size %d\n", i);
-                    std::vector<partial_dag> dags;
-                    {
-                        auto non_filtered_dags = pd_generate(i);
-                        printf("generated %lu nonfilterd DAGs\n", non_filtered_dags.size());
-                        printf("filtering out isomorphic DAGs...\n");
-                        pd_filter_isomorphic_sfast(non_filtered_dags, dags, true);
-                    }
+                    auto dags = pd_generate_nonisomorphic(i);
                     printf("generated %lu DAGs\n", dags.size());
                     this->store<std::vector<partial_dag>>().extend() = dags;
                 }
             } else if (nr_gates > 0) {
                 printf("generating PDs of size %d...\n", nr_gates);
-                std::vector<partial_dag> dags;
-                {
-                    auto non_filtered_dags = pd_generate(nr_gates);
-                    printf("generated %lu nonfilterd DAGs\n", non_filtered_dags.size());
-                    printf("filtering out isomorphic DAGs...\n");
-                    pd_filter_isomorphic_sfast(non_filtered_dags, dags, true);
-                }
+                auto dags = pd_generate_nonisomorphic(nr_gates);
                 printf("generated %lu DAGs\n", dags.size());
                 this->store<std::vector<partial_dag>>().extend() = dags;
             } else {
