@@ -415,7 +415,7 @@ namespace alice
                         auto non_filtered_dags = pd_generate(i);
                         printf("generated %lu nonfilterd DAGs\n", non_filtered_dags.size());
                         printf("filtering out isomorphic DAGs...\n");
-                        pd_filter_isomorphic(non_filtered_dags, dags, true);
+                        pd_filter_isomorphic_fast(non_filtered_dags, dags, true);
                     }
                     printf("generated %lu DAGs\n", dags.size());
                     this->store<std::vector<partial_dag>>().extend() = dags;
@@ -427,7 +427,7 @@ namespace alice
                     auto non_filtered_dags = pd_generate(nr_gates);
                     printf("generated %lu nonfilterd DAGs\n", non_filtered_dags.size());
                     printf("filtering out isomorphic DAGs...\n");
-                    pd_filter_isomorphic(non_filtered_dags, dags, true);
+                    pd_filter_isomorphic_fast(non_filtered_dags, dags, true);
                 }
                 printf("generated %lu DAGs\n", dags.size());
                 this->store<std::vector<partial_dag>>().extend() = dags;
