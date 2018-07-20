@@ -410,15 +410,13 @@ namespace alice
             if (max_nr_gates > 0) {
                 for (int i = min_nr_gates; i <= max_nr_gates; i++) {
                     printf("generating PDs of size %d\n", i);
-                    auto dags = pd_generate_nonisomorphic(i);
-                    printf("generated %lu DAGs\n", dags.size());
-                    this->store<std::vector<partial_dag>>().extend() = dags;
+                    const auto filename = "pd" + std::to_string(i) + ".bin";
+                    pd_write_nonisomorphic(i, filename.c_str());
                 }
             } else if (nr_gates > 0) {
                 printf("generating PDs of size %d...\n", nr_gates);
-                auto dags = pd_generate_nonisomorphic(nr_gates);
-                printf("generated %lu DAGs\n", dags.size());
-                this->store<std::vector<partial_dag>>().extend() = dags;
+                const auto filename = "pd" + std::to_string(nr_gates) + ".bin";
+                pd_write_nonisomorphic(nr_gates, filename.c_str());
             } else {
                 fprintf(stderr, "Error: incorrect number of gates\n");
             }
@@ -432,34 +430,35 @@ namespace alice
     
     ALICE_ADD_COMMAND(pd_gen, "Generate partial DAGs");
 
-    /// Dumps all partial DAGs in the store to a file.
-    /// Dumped PDs are memoves them from the store afterwards.
-    class pd_dump_command : public command
+    class pd_load_command : public command
     {
     public:
-        pd_dump_command(const environment::ptr& env) :
-            command(env, "Dump partial DAGs to a file")
+        pd_load_command(const environment::ptr& env) : 
+            command(env, "Load a set of partial DAGs")
         {
+            add_option("gates, -g", gates_str, "Load PDs with this number of gates");
         }
 
         void execute() override
         {
-            if (this->store<std::vector<partial_dag>>().size() == 0) {
-                fprintf(stderr, "Error: PD store is empty\n");
-                return;
+            const auto min_nr_gates = 1;
+            auto nr_gates = std::atoi(gates_str.c_str());
+            if (nr_gates > 0) {
+                const auto filename = "pd" + std::to_string(nr_gates) + ".bin";
+                const auto dags = read_partial_dags(filename.c_str());
+                printf("Read %zu dags\n", dags.size());
+                this->store<std::vector<partial_dag>>().extend() = dags;
+            } else {
+                fprintf(stderr, "Error: incorrect number of gates\n");
             }
-            for (auto i = 0u; i < this->store<std::vector<partial_dag>>().size(); i++) {
-                const auto dags = this->store<std::vector<partial_dag>>()[i];
-                if (dags.size() > 0) {
-                    const auto filename = "pd" + std::to_string(dags[0].nr_vertices()) + ".bin";
-                    write_partial_dags(dags, filename.c_str());
-                }
-            }
-            this->store<std::vector<partial_dag>>().clear();
         }
+
+    private:
+        std::string gates_str;
     };
     
-    ALICE_ADD_COMMAND(pd_dump, "Dump partial DAGs to file");
+    ALICE_ADD_COMMAND(pd_load, "Load partial DAGs");
+
 }
 
 ALICE_MAIN(percy)
