@@ -441,7 +441,6 @@ namespace alice
 
         void execute() override
         {
-            const auto min_nr_gates = 1;
             auto nr_gates = std::atoi(gates_str.c_str());
             if (nr_gates > 0) {
                 const auto filename = "pd" + std::to_string(nr_gates) + ".bin";
@@ -459,6 +458,32 @@ namespace alice
     
     ALICE_ADD_COMMAND(pd_load, "Load partial DAGs");
 
+    class pd_count_command : public command
+    {
+    public:
+        pd_count_command(const environment::ptr& env) : 
+            command(env, "Counts the number of partial DAGs in a file")
+        {
+            add_option("filename, -g", filename, "File containing PDs");
+        }
+
+        void execute() override
+        {
+            auto fhandle = fopen(filename.c_str(), "rb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open file\n");
+                return;
+            }
+            const auto nr_dags = count_partial_dags(fhandle);
+            fclose(fhandle);
+            printf("File contains %zu dags\n", nr_dags);
+        }
+
+    private:
+        std::string filename;
+    };
+
+    ALICE_ADD_COMMAND(pd_count, "Count partial DAGs in file");
 }
 
 ALICE_MAIN(percy)
