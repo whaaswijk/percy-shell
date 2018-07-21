@@ -392,6 +392,7 @@ namespace alice
 
     /// A command to generate partial DAGs of the specified size.
     /// Generated PDs are loaded into the appropriate store after generation.
+#ifndef DISABLE_NAUTY
     class pd_gen_command : public command
     {
     public:
@@ -429,6 +430,7 @@ namespace alice
     };
     
     ALICE_ADD_COMMAND(pd_gen, "Generate partial DAGs");
+#endif // DISABLE_NAUTY
 
     class pd_load_command : public command
     {
