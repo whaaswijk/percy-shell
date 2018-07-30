@@ -355,11 +355,9 @@ namespace alice
                 spec.fanin = 3;
                 spec.nr_steps = nr_gates;
                 spec[0] = maj_tt;
-                spec.add_primitive(MAJ);
-                spec.compile_primitives();
                 spec.preprocess();
                 cnf_formula formula;
-                knuth_encoder encoder(formula);
+                maj_encoder encoder(formula);
                 encoder.encode(spec);
 
                 const auto dimacs_filename = "maj-" + std::to_string(nr_inputs) + 
