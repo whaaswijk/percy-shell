@@ -390,7 +390,6 @@ namespace alice
 
     /// A command to generate partial DAGs of the specified size.
     /// Generated PDs are loaded into the appropriate store after generation.
-#ifndef DISABLE_NAUTY
     class pd_gen_command : public command
     {
     public:
@@ -399,6 +398,7 @@ namespace alice
         {
             add_option("gates, -g", gates_str, "Generate PDs with this number of gates");
             add_option("max-gates, -m", max_gates_str, "Generate PDs with up to this number of gates");
+            add_option("fanin, -f", fanin_str, "Generate PDs with this fanin");
         }
 
         void execute() override
@@ -406,16 +406,32 @@ namespace alice
             const auto min_nr_gates = 1;
             auto nr_gates = std::atoi(gates_str.c_str());
             auto max_nr_gates = std::atoi(max_gates_str.c_str());
+            printf("max_gates_str: %s", max_gates_str.c_str());
+            auto fanin = std::atoi(fanin_str.c_str());
+            if (fanin == 0) {
+                fanin = 2;
+            } else if (fanin != 2 && fanin != 3) {
+                fprintf(stderr, "Error: unsupported fanin size %d\n", fanin);
+                return;
+            }
             if (max_nr_gates > 0) {
                 for (int i = min_nr_gates; i <= max_nr_gates; i++) {
                     printf("generating PDs of size %d\n", i);
                     const auto filename = "pd" + std::to_string(i) + ".bin";
-                    pd_write_nonisomorphic(i, filename.c_str());
+                    if (fanin == 2) {
+                        pd_write_nonisomorphic(i, filename.c_str());
+                    } else {
+                        pd3_write_nonisomorphic(i, filename.c_str());
+                    }
                 }
             } else if (nr_gates > 0) {
                 printf("generating PDs of size %d...\n", nr_gates);
                 const auto filename = "pd" + std::to_string(nr_gates) + ".bin";
-                pd_write_nonisomorphic(nr_gates, filename.c_str());
+                if (fanin == 2) {
+                    pd_write_nonisomorphic(nr_gates, filename.c_str());
+                } else {
+                    pd3_write_nonisomorphic(nr_gates, filename.c_str());
+                }
             } else {
                 fprintf(stderr, "Error: incorrect number of gates\n");
             }
@@ -424,11 +440,11 @@ namespace alice
     private:
         std::string gates_str;
         std::string max_gates_str;
+        std::string fanin_str;
 
     };
     
     ALICE_ADD_COMMAND(pd_gen, "Generate partial DAGs");
-#endif // DISABLE_NAUTY
 
     class pd_load_command : public command
     {
@@ -465,22 +481,36 @@ namespace alice
             command(env, "Counts the number of partial DAGs in a file")
         {
             add_option("filename, -g", filename, "File containing PDs");
+            add_option("fanin, -f", fanin_str, "Fanin of PDs in file");
         }
 
         void execute() override
         {
+            auto fanin = std::atoi(fanin_str.c_str());
+            if (fanin == 0) {
+                fanin = 2;
+            } else if (fanin != 2 && fanin != 3) {
+                fprintf(stderr, "Error: unsupported fanin size %d\n", fanin);
+                return;
+            }
             auto fhandle = fopen(filename.c_str(), "rb");
             if (fhandle == NULL) {
                 fprintf(stderr, "Error: unable to open file\n");
                 return;
             }
-            const auto nr_dags = count_partial_dags(fhandle);
+            size_t nr_dags;
+            if (fanin == 2) {
+                nr_dags = count_partial_dags(fhandle);
+            } else {
+                nr_dags = count_partial_dag3s(fhandle);
+            }
             fclose(fhandle);
             printf("File contains %zu dags\n", nr_dags);
         }
 
     private:
         std::string filename;
+        std::string fanin_str;
     };
 
     ALICE_ADD_COMMAND(pd_count, "Count partial DAGs in file");
